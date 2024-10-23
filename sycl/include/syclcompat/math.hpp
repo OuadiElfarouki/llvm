@@ -129,11 +129,13 @@ class vectorized_binary<
 public:
   inline unsigned operator()(VecT a, VecT b, const BinaryOperation binary_op) {
     unsigned result = 0;
-    constexpr size_t elem_size = sizeof(typename VecT::element_type);
-    constexpr unsigned bool_mask = (1U << (8 * elem_size)) - 1;
+    constexpr size_t elem_size = sizeof(typename VecT::element_type) * 8;
+    static_assert(elem_size < 32,
+                  "Vector element size must be less than 4 bytes");
+    constexpr unsigned bool_mask = (1U << elem_size) - 1;
     for (size_t i = 0; i < a.size(); ++i) {
       bool comp_result = binary_op(a[i], b[i]);
-      result |= (comp_result ? bool_mask : 0U) << (i * 8 * elem_size);
+      result |= (comp_result ? bool_mask : 0U) << (i * elem_size);
     }
     return result;
   }
@@ -1052,7 +1054,7 @@ struct average {
 
 } // namespace detail
 
-/// Compute vectorized binary operation value for two values, with each value
+/// Compute vectorized binary operation value for two/four values, with each
 /// treated as a vector type \p VecT.
 /// \tparam [in] VecT The type of the vector
 /// \tparam [in] BinaryOperation The binary operation class
